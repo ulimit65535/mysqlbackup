@@ -3,6 +3,7 @@ import os
 import configparser
 import logging
 import datetime
+import tarfile
 
 logging_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'run.log')
 logging.basicConfig(filename=logging_file, level=logging.INFO,
@@ -84,11 +85,12 @@ class MysqlBackup(object):
 
         # 创建本次备份文件夹
         self.backup_dir = str(datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
-        os.mkdirs(os.path.join(self.local_backup_path, self.backup_dir))
+        os.makedirs(os.path.join(self.local_backup_path, self.backup_dir))
 
     def structure_backup(self):
+        """利用mysqldump备份表结构"""
         dump_file = os.path.join(self.local_backup_path, self.backup_dir, 'database.sql')
-        result = os.system('{} -u {} -p {} -h {} -P {} --all-databases -d > {}'.format(
+        result = os.system('{} -u{} -p{} -h {} -P {} --all-databases -d --set-gtid-purged=OFF> {}'.format(
             self.mysqldump_path,
             self.mysql_user,
             self.mysql_password,
@@ -96,12 +98,16 @@ class MysqlBackup(object):
             self.mysql_port,
             dump_file
         ))
-        if not result:
+        if result != 0:
             logging.error('structure_backup备份失败')
+            return False
+        else:
+            return True
 
     def full_backup(self):
+        """利用percona工具整库备份"""
         dump_dir = os.path.join(self.local_backup_path, self.backup_dir, 'databases')
-        result = os.system('{} --defaults -file={} --host={} --port={} --user={} --password={} --no-timestamp {}'.format(
+        result = os.system('{} --defaults-file={} --host={} --port={} --user={} --password={} --no-timestamp {}'.format(
             self.innobackupex_path,
             self.my_cnf,
             self.mysql_host,
@@ -110,12 +116,28 @@ class MysqlBackup(object):
             self.mysql_password,
             dump_dir
         ))
-        if not result:
+        if result != 0:
             logging.error('full_backup备份失败')
+            return False
+        else:
+            return True
+
+    def compress(self):
+        """压缩备份文件夹"""
+        output_filename = os.path.join(self.local_backup_path, self.backup_dir + '.tar.gz')
+        source_dir = os.path.join(self.local_backup_path, self.backup_dir)
+        try:
+            with tarfile.open(output_filename, "w:gz") as tar:
+                tar.add(source_dir, arcname=os.path.basename(source_dir))
+            return True
+        except Exception as e:
+            logging.error('压缩备份文件夹失败:{}'.format(e))
+            return False
 
     def run(self):
         self.structure_backup()
-        self.full_backup()
+        #self.full_backup()
+        self.compress()
 
 
 if __name__ == '__main__':
