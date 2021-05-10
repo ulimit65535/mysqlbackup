@@ -84,12 +84,11 @@ class MysqlBackup(object):
 
         # 创建本次备份文件夹
         self.backup_dir = str(datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
-        #os.mkdirs(os.path.join(self.local_backup_path, self.backup_dir))
-        print(os.path.join(self.local_backup_path, self.backup_dir))
+        os.mkdirs(os.path.join(self.local_backup_path, self.backup_dir))
 
     def structure_backup(self):
         dump_file = os.path.join(self.local_backup_path, self.backup_dir, 'database.sql')
-        print('{} -u {} -p {} -h {} -P {} --all-databases -d > {}'.format(
+        os.system('{} -u {} -p {} -h {} -P {} --all-databases -d > {}'.format(
             self.mysqldump_path,
             self.mysql_user,
             self.mysql_password,
@@ -100,7 +99,7 @@ class MysqlBackup(object):
 
     def full_backup(self):
         dump_dir = os.path.join(self.local_backup_path, self.backup_dir, 'databases')
-        print('{} --defaults -file={} --host={} --port={} --user={} --password={} --no-timestamp {}'.format(
+        os.system('{} --defaults -file={} --host={} --port={} --user={} --password={} --no-timestamp {}'.format(
             self.innobackupex_path,
             self.my_cnf,
             self.mysql_host,
