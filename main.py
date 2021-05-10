@@ -88,7 +88,7 @@ class MysqlBackup(object):
 
     def structure_backup(self):
         dump_file = os.path.join(self.local_backup_path, self.backup_dir, 'database.sql')
-        os.system('{} -u {} -p {} -h {} -P {} --all-databases -d > {}'.format(
+        result = os.system('{} -u {} -p {} -h {} -P {} --all-databases -d > {}'.format(
             self.mysqldump_path,
             self.mysql_user,
             self.mysql_password,
@@ -96,10 +96,12 @@ class MysqlBackup(object):
             self.mysql_port,
             dump_file
         ))
+        if not result:
+            logging.error('structure_backup备份失败')
 
     def full_backup(self):
         dump_dir = os.path.join(self.local_backup_path, self.backup_dir, 'databases')
-        os.system('{} --defaults -file={} --host={} --port={} --user={} --password={} --no-timestamp {}'.format(
+        result = os.system('{} --defaults -file={} --host={} --port={} --user={} --password={} --no-timestamp {}'.format(
             self.innobackupex_path,
             self.my_cnf,
             self.mysql_host,
@@ -108,6 +110,8 @@ class MysqlBackup(object):
             self.mysql_password,
             dump_dir
         ))
+        if not result:
+            logging.error('full_backup备份失败')
 
     def run(self):
         self.structure_backup()
