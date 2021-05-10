@@ -4,6 +4,7 @@ import configparser
 import logging
 import datetime
 import tarfile
+import shutil
 
 logging_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'run.log')
 logging.basicConfig(filename=logging_file, level=logging.INFO,
@@ -23,6 +24,7 @@ class MysqlBackup(object):
         self.mysql_user = config.get('BACKUP', 'user')
         self.mysql_password = config.get('BACKUP', 'password')
         self.local_backup_path = config.get('BACKUP', 'backup_path')
+        self.local_reserve_days = config.get('BACKUP', 'reserve_days')
         try:
             self.mysql_host = config.get('BACKUP', 'host')
         except configparser.NoOptionError:
@@ -70,6 +72,7 @@ class MysqlBackup(object):
             self.ssh_host = config.get('REMOTE', 'host')
             self.ssh_user = config.get('REMOTE', 'user')
             self.remote_backup_path = config.get('REMOTE', 'backup_path')
+            self.remote_reserve_days = config.get('REMOTE', 'reserve_days')
             try:
                 self.ssh_port = config.get('REMOTE', 'port')
             except configparser.NoOptionError:
@@ -129,10 +132,27 @@ class MysqlBackup(object):
         try:
             with tarfile.open(output_filename, "w:gz") as tar:
                 tar.add(source_dir, arcname=os.path.basename(source_dir))
+            shutil.rmtree(source_dir)
             return True
         except Exception as e:
             logging.error('压缩备份文件夹失败:{}'.format(e))
             return False
+
+    def local_clean(self):
+        """清理本地历史备份"""
+        pass
+
+    def remote_clean(self):
+        """远端历史备份清理"""
+        pass
+
+    def remote_backup(self):
+        """异地备份"""
+        pass
+
+    def mail(self):
+        """发送邮件通知"""
+        pass
 
     def run(self):
         self.structure_backup()
