@@ -1,32 +1,20 @@
-# - - - - - - - - - -SMTP相关配置 - - - - - - - - - - #
-[MAIL]
-host = smtp.163.com
-port = 25
-user = xxx@163.com
-# 在邮箱中设置的客户端授权密码
-password = xxxxx
-# 收件人看到的发件人
-from = Mysql备份通知<xxx@163.com>
-# 收件人，逗号分隔
-to = xxx@qq.com, xxx@163.com
-
 # - - - - - - - - - -MYSQL连接及备份配置- - - - - - - - - - #
 [BACKUP]
 user=backup
 password=xxx
-#port=3306
-#host=localhost
+port=3306
+host=localhost
 mysqldump_path = /usr/bin/mysqldump
 innobackupex_path = /usr/bin/innobackupex
 my_cnf = /etc/my.cnf
-backup_path = /data1/backup
-reserve_days = 3
+backup_path = /opt/backup
+reserve_days = 1
 
 # - - - - - - - - - -异地备份,使用ssh连接- - - - - - - - - - #
 [REMOTE]
-user=mysqlbackup
-#password=xxx
-#port=22
-host=192.168.12.12
-backup_path = /data/mysqlbackup/172.15.22.22/
+user=ubuntu
+password=xxx
+port=22
+host=127.0.0.1
+backup_path = /opt/backup
 reserve_days = 10
