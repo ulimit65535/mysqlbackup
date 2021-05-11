@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 import os
 import configparser
 import logging
@@ -110,7 +110,7 @@ class MysqlBackup(object):
         else:
             return True
 
-    def full_backup(self, backup_dir):
+    def full_backup(self, backup_dir=None):
         """利用percona工具整库备份"""
         if not backup_dir:
             backup_dir = self.backup_dir
