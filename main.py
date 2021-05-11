@@ -160,6 +160,7 @@ class MysqlBackup(object):
                         os.remove(file_path_abs)
                     except Exception as e:
                         logging.error('删除本地备份文件失败:{}'.format(e))
+                        return None
                     else:
                         logging.info('已删除过期备份文件:{}'.format(file_name))
                         clean_file_list.append(file_name)
@@ -243,12 +244,40 @@ class MysqlBackup(object):
         return clean_file_list
 
     def run(self):
-        #self.structure_backup()
-        #self.full_backup()
-        self.test()
-        self.compress()
-        #self.local_clean()
-        self.remote_backup_and_clean()
+        data = {'message': ''}
+        result = self.structure_backup()
+        if not result:
+            data['result'] = False
+            data['message'] += 'structure_backup失败\n'
+            return data
+        result = self.full_backup()
+        if not result:
+            data['result'] = False
+            data['message'] += 'full_backup失败\n'
+            return data
+        file = self.compress()
+        if file is None:
+            data['result'] = False
+            data['message'] += '压缩文件夹失败\n'
+            return data
+        file_list = self.local_clean()
+        if file_list is None:
+            data['result'] = False
+            data['message'] += '删除本地过期备份文件失败\n'
+            return data
+        else:
+            data['message'] += '删除本地备份:\n'
+            for file in file_list:
+                data['message'] = data['message'] + file + '\n'
+        file_list = self.remote_backup_and_clean()
+        if file_list is None:
+            data['result'] = False
+            data['message'] += '删除远程过期备份文件失败\n'
+            return data
+        else:
+            data['message'] += '删除远程备份:\n'
+            for file in file_list:
+                data['message'] = data['message'] + file + '\n'
 
 
 if __name__ == '__main__':
