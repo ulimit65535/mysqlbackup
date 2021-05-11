@@ -6,7 +6,7 @@ import datetime
 import tarfile
 import shutil
 import time
-
+import pexpect
 import paramiko
 
 logging_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'run.log')
@@ -59,17 +59,20 @@ class MysqlBackup(object):
             self.is_remote_backup = True
             self.ssh_host = config.get('REMOTE', 'host')
             self.ssh_user = config.get('REMOTE', 'user')
+            self.ssh_password = config.get('REMOTE', 'password')
             self.remote_backup_path = config.get('REMOTE', 'backup_path')
             self.remote_reserve_days = int(config.get('REMOTE', 'reserve_days'))
             try:
                 self.ssh_port = int(config.get('REMOTE', 'port'))
             except configparser.NoOptionError:
                 self.ssh_port = 22
+            """
             try:
                 self.ssh_password = config.get('REMOTE', 'password')
             except configparser.NoOptionError:
                 # 已配置免密登录
                 self.ssh_password = None
+            """
         else:
             self.is_remote_backup = False
             logging.info('未发现REMOTE配置，将不会进行异地备份')
@@ -181,30 +184,63 @@ class MysqlBackup(object):
         except Exception as e:
             logging.error('ssh连接远程服务器失败:{}'.format(e))
             return None
-
         try:
-            sftp.put(backup_file, os.path.join(remote_path, backup_file))
+            sftp.chdir(remote_path)
+        except IOError:
+            try:
+                sftp.mkdir(remote_path)
+            except Exception as e:
+                logging.error('无法创建远程备份目录:{}'.format(e))
+                ssh.close()
+                return None
+            else:
+                logging.info('创建远程备份文件夹:{}'.format(remote_path))
         except Exception as e:
-            logging.error('远程传输文件失败:{}'.format(e))
+            logging.error('ssh未知异常:{}'.format(e))
+            ssh.close()
             return None
-        else:
-            # 清理远程备份文件夹
-            now = time.time()
-            reserve_min = reserve_days * 24 * 60
-            files_attr = sftp.listdir_attr(remote_path)
-            clean_file_list = []
-            for file_attr in files_attr:
-                remote_file_abs = os.path.join(remote_path, file_attr.filename)
-                exist_min = int((now - file_attr.st_mtime) / 60)
-                if exist_min > reserve_min:
-                    try:
-                        sftp.remove(remote_file_abs)
-                    except Exception as e:
-                        logging.error('删除远程备份文件失败:{}'.format(e))
-                    else:
-                        logging.info('已删除远程过期备份文件:{}'.format(remote_file_abs))
-                        clean_file_list.append(file_attr.filename)
-            return clean_file_list
+
+        cmd = 'rsync -ztopg -e "ssh -o PubkeyAuthentication=yes \
+-o stricthostkeychecking=no -p {}" {} {}@{}:{}/'.format(
+            self.ssh_port,
+            backup_file,
+            self.ssh_user,
+            self.ssh_host,
+            remote_path
+        )
+        child = pexpect.spawn(cmd, [], 86400)
+        try:
+            while True:
+                i = child.expect(['assword:', pexpect.EOF])
+                if i == 0:
+                    child.sendline(self.ssh_password)
+                    continue
+                elif i == 1:
+                    child.expect(pexpect.EOF)
+                    child.close()
+        except pexpect.EOF:
+            child.close()
+            ssh.close()
+            logging.error('rsync远程备份失败')
+            return None
+
+        # 清理远程备份文件夹
+        now = time.time()
+        reserve_min = reserve_days * 24 * 60
+        files_attr = sftp.listdir_attr(remote_path)
+        clean_file_list = []
+        for file_attr in files_attr:
+            remote_file_abs = os.path.join(remote_path, file_attr.filename)
+            exist_min = int((now - file_attr.st_mtime) / 60)
+            if exist_min > reserve_min:
+                try:
+                    sftp.remove(remote_file_abs)
+                except Exception as e:
+                    logging.error('删除远程备份文件失败:{}'.format(e))
+                else:
+                    logging.info('已删除远程过期备份文件:{}'.format(remote_file_abs))
+                    clean_file_list.append(file_attr.filename)
+        return clean_file_list
 
     def run(self):
         #self.structure_backup()
