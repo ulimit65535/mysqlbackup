@@ -9,6 +9,10 @@ import time
 import pexpect
 import paramiko
 
+"""
+python3 -m pip install -U pip setuptools
+"""
+
 logging_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'run.log')
 logging.basicConfig(filename=logging_file, level=logging.INFO,
                     format='%(asctime)s: %(message)s',
@@ -266,7 +270,7 @@ class MysqlBackup(object):
             data['message'] += '删除本地过期备份文件失败\n'
             return data
         else:
-            data['message'] += '删除本地备份:\n'
+            data['message'] += '删除本地备份文件:\n'
             for file in file_list:
                 data['message'] = data['message'] + file + '\n'
         file_list = self.remote_backup_and_clean()
@@ -275,9 +279,11 @@ class MysqlBackup(object):
             data['message'] += '删除远程过期备份文件失败\n'
             return data
         else:
-            data['message'] += '删除远程备份:\n'
+            data['message'] += '删除远程备份文件:\n'
             for file in file_list:
                 data['message'] = data['message'] + file + '\n'
+        data['result'] = True
+        return data
 
 
 if __name__ == '__main__':
