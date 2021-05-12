@@ -108,6 +108,7 @@ class MysqlBackup(object):
             logging.error('structure_backup备份失败')
             return False
         else:
+            logging.info('structure_backup备份成功')
             return True
 
     def full_backup(self, backup_dir=None):
@@ -116,7 +117,8 @@ class MysqlBackup(object):
             backup_dir = self.backup_dir
 
         dump_dir = os.path.join(backup_dir, 'databases')
-        result = os.system('{} --defaults-file={} --host={} --port={} --user={} --password={} --no-timestamp {}'.format(
+        result = os.system('{} --defaults-file={} --host={} --port={} \
+--user={} --password={} --no-timestamp {} > /dev/null'.format(
             self.innobackupex_path,
             self.my_cnf,
             self.mysql_host,
@@ -129,22 +131,30 @@ class MysqlBackup(object):
             logging.error('full_backup备份失败')
             return False
         else:
+            logging.info('full_backup备份成功')
             return True
 
     def compress(self, source_dir=None, target_file=None):
+        """压缩备份文件夹"""
         if not source_dir:
             source_dir = self.backup_dir
+            source_dir_base = os.path.dirname(source_dir)
+            source_dir_name = os.path.basename(source_dir)
         if not target_file:
             target_file = self.backup_file
-        """压缩备份文件夹"""
-        try:
-            with tarfile.open(target_file, "w:gz") as tar:
-                tar.add(source_dir, arcname=os.path.basename(source_dir))
-            shutil.rmtree(source_dir)
-            return target_file
-        except Exception as e:
-            logging.error('压缩备份文件夹失败:{}'.format(e))
+        result = os.system('cd {} && tar -czf {} {} > /dev/null'.format(
+            source_dir_base,
+            target_file,
+            source_dir_name
+        ))
+        # 删除已压缩的文件夹
+        shutil.rmtree(source_dir)
+        if result != 0:
+            logging.error('压缩备份文件夹失败')
             return None
+        else:
+            logging.info('压缩备份文件夹成功')
+            return target_file
 
     def local_clean(self, backup_path=None, reserve_days=None):
         """清理本地历史备份"""
@@ -168,6 +178,7 @@ class MysqlBackup(object):
                     else:
                         logging.info('已删除过期备份文件:{}'.format(file_name))
                         clean_file_list.append(file_name)
+        logging.info('清理本地备份文件夹成功')
         return clean_file_list
 
     def remote_backup_and_clean(self, backup_file=None, remote_path=None, reserve_days=None):
@@ -223,11 +234,14 @@ class MysqlBackup(object):
                 elif i == 1:
                     child.expect(pexpect.EOF)
                     child.close()
+                    break
         except pexpect.EOF:
             child.close()
             ssh.close()
             logging.error('rsync远程备份失败')
             return None
+
+        logging.info('rsync远程备份成功')
 
         # 清理远程备份文件夹
         now = time.time()
@@ -245,10 +259,13 @@ class MysqlBackup(object):
                 else:
                     logging.info('已删除远程过期备份文件:{}'.format(remote_file_abs))
                     clean_file_list.append(file_attr.filename)
+        logging.info('清理远程备份文件夹成功')
         return clean_file_list
 
     def run(self):
         data = {'message': ''}
+        result = self.test()
+        """
         result = self.structure_backup()
         if not result:
             data['result'] = False
@@ -259,6 +276,7 @@ class MysqlBackup(object):
             data['result'] = False
             data['message'] += 'full_backup失败\n'
             return data
+        """
         file = self.compress()
         if file is None:
             data['result'] = False
