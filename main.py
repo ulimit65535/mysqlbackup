@@ -264,8 +264,6 @@ class MysqlBackup(object):
 
     def run(self):
         data = {'message': ''}
-        result = self.test()
-        """
         result = self.structure_backup()
         if not result:
             data['result'] = False
@@ -276,7 +274,6 @@ class MysqlBackup(object):
             data['result'] = False
             data['message'] += 'full_backup失败\n'
             return data
-        """
         file = self.compress()
         if file is None:
             data['result'] = False
