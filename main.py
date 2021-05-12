@@ -106,6 +106,7 @@ class MysqlBackup(object):
         ))
         if result != 0:
             logging.error('structure_backup备份失败')
+            os.remove(dump_file)
             return False
         else:
             logging.info('structure_backup备份成功')
@@ -128,7 +129,8 @@ class MysqlBackup(object):
             dump_dir
         ))
         if result != 0:
-            logging.error('full_backup备份失败')
+            logging.error('full_backup备份失败,删除未完成备份')
+            shutil.rmtree(dump_dir)
             return False
         else:
             logging.info('full_backup备份成功')
