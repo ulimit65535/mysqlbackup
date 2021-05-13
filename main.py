@@ -119,7 +119,7 @@ class MysqlBackup(object):
 
         dump_dir = os.path.join(backup_dir, 'databases')
         result = os.system('{} --defaults-file={} --host={} --port={} \
---user={} --password={} --no-timestamp {} > /dev/null'.format(
+--user={} --password={} --no-timestamp {} > /dev/null 2>&1'.format(
             self.innobackupex_path,
             self.my_cnf,
             self.mysql_host,
