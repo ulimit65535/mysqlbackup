@@ -265,44 +265,45 @@ class MysqlBackup(object):
         return clean_file_list
 
     def run(self):
-        data = {'message': '', 'result': True}
+        data_run = {'message': '', 'result': True}
         result1 = self.structure_backup()
         result2 = self.full_backup()
         if not result1:
-            data['message'] += 'structure_backup失败\n'
+            data_run['result'] = False
+            data_run['message'] += 'structure_backup失败\n'
         if not result2:
-            data['message'] += 'full_backup失败\n'
+            data_run['result'] = False
+            data_run['message'] += 'full_backup失败\n'
         if not result1 and not result2:
-            data['result'] = False
-            return data
-
+            # 都失败，则直接返回
+            return data_run
         file = self.compress()
         if file is None:
-            data['result'] = False
-            data['message'] += '压缩文件夹失败\n'
-            return data
+            data_run['result'] = False
+            data_run['message'] += '压缩文件夹失败\n'
+            return data_run
         file_list = self.local_clean()
         if file_list is None:
-            data['result'] = False
-            data['message'] += '删除本地过期备份文件失败\n'
-            return data
+            data_run['result'] = False
+            data_run['message'] += '删除本地过期备份文件失败\n'
+            return data_run
         else:
-            data['message'] += '删除本地备份文件:\n'
+            data_run['message'] += '删除本地备份文件:\n'
             for file in file_list:
-                data['message'] = data['message'] + file + '\n'
+                data_run['message'] = data_run['message'] + file + '\n'
         file_list = self.remote_backup_and_clean()
         if file_list is None:
-            data['result'] = False
-            data['message'] += '删除远程过期备份文件失败\n'
-            return data
+            data_run['result'] = False
+            data_run['message'] += '删除远程过期备份文件失败\n'
+            return data_run
         else:
-            data['message'] += '删除远程备份文件:\n'
+            data_run['message'] += '删除远程备份文件:\n'
             for file in file_list:
-                data['message'] = data['message'] + file + '\n'
-        return data
+                data_run['message'] = data_run['message'] + file + '\n'
+        return data_run
 
 
 if __name__ == '__main__':
     mb = MysqlBackup()
-    data = mb.run()
-    logging.info(data)
+    msg = mb.run()
+    logging.info(msg)
