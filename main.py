@@ -265,17 +265,17 @@ class MysqlBackup(object):
         return clean_file_list
 
     def run(self):
-        data = {'message': ''}
-        result = self.structure_backup()
-        if not result:
-            data['result'] = False
+        data = {'message': '', 'result': True}
+        result1 = self.structure_backup()
+        result2 = self.full_backup()
+        if not result1:
             data['message'] += 'structure_backup失败\n'
-            return data
-        result = self.full_backup()
-        if not result:
-            data['result'] = False
+        if not result2:
             data['message'] += 'full_backup失败\n'
+        if not result1 and not result2:
+            data['result'] = False
             return data
+
         file = self.compress()
         if file is None:
             data['result'] = False
@@ -299,10 +299,10 @@ class MysqlBackup(object):
             data['message'] += '删除远程备份文件:\n'
             for file in file_list:
                 data['message'] = data['message'] + file + '\n'
-        data['result'] = True
         return data
 
 
 if __name__ == '__main__':
     mb = MysqlBackup()
-    mb.run()
+    data = mb.run()
+    logging.info(data)
