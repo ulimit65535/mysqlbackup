@@ -3,7 +3,6 @@ import os
 import configparser
 import logging
 import datetime
-import tarfile
 import shutil
 import time
 import pexpect
@@ -287,7 +286,7 @@ class MysqlBackup(object):
             data_run['result'] = False
             data_run['message'] += '删除本地过期备份文件失败\n'
             return data_run
-        else:
+        elif file_list:
             data_run['message'] += '删除本地备份文件:\n'
             for file in file_list:
                 data_run['message'] = data_run['message'] + file + '\n'
@@ -296,7 +295,7 @@ class MysqlBackup(object):
             data_run['result'] = False
             data_run['message'] += '删除远程过期备份文件失败\n'
             return data_run
-        else:
+        elif file_list:
             data_run['message'] += '删除远程备份文件:\n'
             for file in file_list:
                 data_run['message'] = data_run['message'] + file + '\n'
