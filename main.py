@@ -96,7 +96,7 @@ class MysqlBackup(object):
 
         dump_file = os.path.join(backup_dir, 'database.sql')
         result = os.system('{} -u{} -p{} -h {} -P {} \
---all-databases -d --single-transaction --set-gtid-purged=OFF> {}'.format(
+--all-databases -d --single-transaction --set-gtid-purged=OFF > {}'.format(
             self.mysqldump_path,
             self.mysql_user,
             self.mysql_password,
