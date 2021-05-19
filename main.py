@@ -89,12 +89,9 @@ class MysqlBackup(object):
         dump_file = os.path.join(self.backup_dir, 'database.sql')
         os.system('touch {}'.format(dump_file))
 
-    def structure_backup(self, backup_dir=None):
+    def structure_backup(self):
         """利用mysqldump备份表结构"""
-        if not backup_dir:
-            backup_dir = self.backup_dir
-
-        dump_file = os.path.join(backup_dir, 'database.sql')
+        dump_file = os.path.join(self.backup_dir, 'database.sql')
         result = os.system('{} -u{} -p{} -h {} -P {} \
 --all-databases -d --single-transaction --set-gtid-purged=OFF > {}'.format(
             self.mysqldump_path,
@@ -112,12 +109,9 @@ class MysqlBackup(object):
             logging.info('structure_backup备份成功')
             return True
 
-    def full_backup(self, backup_dir=None):
+    def full_backup(self):
         """利用percona工具整库备份"""
-        if not backup_dir:
-            backup_dir = self.backup_dir
-
-        dump_dir = os.path.join(backup_dir, 'databases')
+        dump_dir = os.path.join(self.backup_dir, 'databases')
         result = os.system('{} --defaults-file={} --host={} --port={} \
 --user={} --password={} --no-timestamp --compress-threads=4 --parallel=4 {} > /dev/null 2>&1'.format(
             self.innobackupex_path,
@@ -183,17 +177,10 @@ class MysqlBackup(object):
         logging.info('清理本地备份文件夹成功')
         return clean_file_list
 
-    def remote_backup_and_clean(self, backup_file=None, remote_path=None, reserve_days=None):
+    def remote_backup_and_clean(self):
         """异地备份"""
         if not self.is_remote_backup:
             return None
-        if not backup_file:
-            backup_file = self.backup_file
-        if not remote_path:
-            remote_path = self.remote_backup_path
-        if not reserve_days:
-            reserve_days = self.remote_reserve_days
-
         try:
             ssh = paramiko.SSHClient()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -203,16 +190,16 @@ class MysqlBackup(object):
             logging.error('ssh连接远程服务器失败:{}'.format(e))
             return None
         try:
-            sftp.chdir(remote_path)
+            sftp.chdir(self.remote_backup_path)
         except IOError:
             try:
-                sftp.mkdir(remote_path)
+                sftp.mkdir(self.remote_backup_path)
             except Exception as e:
                 logging.error('无法创建远程备份目录:{}'.format(e))
                 ssh.close()
                 return None
             else:
-                logging.info('创建远程备份文件夹:{}'.format(remote_path))
+                logging.info('创建远程备份文件夹:{}'.format(self.remote_backup_path))
         except Exception as e:
             logging.error('ssh未知异常:{}'.format(e))
             ssh.close()
@@ -221,10 +208,10 @@ class MysqlBackup(object):
         cmd = 'rsync -ztopg -e "ssh -o PubkeyAuthentication=yes \
 -o stricthostkeychecking=no -p {}" {} {}@{}:{}/'.format(
             self.ssh_port,
-            backup_file,
+            self.backup_file,
             self.ssh_user,
             self.ssh_host,
-            remote_path
+            self.remote_backup_path
         )
         child = pexpect.spawn(cmd, [], 86400)
         try:
@@ -247,11 +234,11 @@ class MysqlBackup(object):
 
         # 清理远程备份文件夹
         now = time.time()
-        reserve_min = reserve_days * 24 * 60
-        files_attr = sftp.listdir_attr(remote_path)
+        reserve_min = self.remote_reserve_days * 24 * 60
+        files_attr = sftp.listdir_attr(self.remote_backup_path)
         clean_file_list = []
         for file_attr in files_attr:
-            remote_file_abs = os.path.join(remote_path, file_attr.filename)
+            remote_file_abs = os.path.join(self.remote_backup_path, file_attr.filename)
             exist_min = int((now - file_attr.st_mtime) / 60)
             if exist_min > reserve_min:
                 try:
